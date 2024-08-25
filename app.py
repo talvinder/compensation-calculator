@@ -11,10 +11,9 @@ def calculate_equity(performance, median, top_quartile, top_decile, base_equity,
     else:
         return max(base_equity, base_equity * (math.log(performance / top_quartile, 3) + 1))
 
-def calculate_cash_bonus(performance, top_quartile, base_salary, bonus_base_percentage, final_equity, base_equity):
+def calculate_cash_bonus(performance, top_quartile, base_salary, bonus_base_percentage):
     target_bonus = base_salary * (bonus_base_percentage / 100)
-    equity_ratio = final_equity / base_equity
-    return target_bonus * equity_ratio
+    return target_bonus * (math.log(performance / top_quartile, 3) + 1)
 
 def calculate_compensation(revenue, year, benchmarks, base_salary, joining_bonus, equity_distribution, bonus_base_percentage, min_equity_percentages, median_equity_ratio):
     top_quartile = benchmarks.loc[year-1, 'Top Quartile']
@@ -25,7 +24,7 @@ def calculate_compensation(revenue, year, benchmarks, base_salary, joining_bonus
     min_equity = min_equity_percentages[year-1]
     
     equity = calculate_equity(revenue, median, top_quartile, top_decile, base_equity, min_equity, median_equity_ratio)
-    bonus = calculate_cash_bonus(revenue, top_quartile, base_salary, bonus_base_percentage, equity, base_equity)
+    bonus = calculate_cash_bonus(revenue, top_quartile, base_salary, bonus_base_percentage)
     
     if year == 1:
         bonus = max(0, bonus - joining_bonus)
@@ -133,17 +132,20 @@ def main():
     st.header("Compensation Results")
     results_df = pd.DataFrame(results, index=['Year 1', 'Year 2', 'Year 3', 'Year 4'])
     
-    # Add total column
-    results_df['Total'] = results_df.sum(axis=1)
+    # Add total row
+    # results_df.loc['Total'] = results_df.sum()
     
     # Format the dataframe
-    for col in results_df.columns:
-        if col in ['Equity', 'Median Equity', 'Top Quartile Equity', 'Top Decile Equity']:
-            results_df[col] = results_df[col].apply(lambda x: f"{x:.2f}%")
-        elif col == 'Actual Revenue':
-            results_df[col] = results_df[col].apply(lambda x: f"${x:.2f}M")
-        else:
-            results_df[col] = results_df[col].apply(lambda x: f"₹{x:.2f}L")
+    # for col in results_df.columns:
+    #     if col in ['Equity', 'Median Equity', 'Top Quartile Equity', 'Top Decile Equity']:
+    #         results_df[col] = results_df[col].apply(lambda x: f"{x:.2f}%")
+    #         results_df.loc['Total', col] = f"{results_df.loc['Total', col]:.2f}%"
+    #     elif col == 'Actual Revenue':
+    #         results_df[col] = results_df[col].apply(lambda x: f"${x:.2f}M")
+    #         results_df.loc['Total', col] = f"${results_df.loc['Total', col]:.2f}M"
+    #     else:
+    #         results_df[col] = results_df[col].apply(lambda x: f"₹{x:.2f}L")
+    #         results_df.loc['Total', col] = f"₹{results_df.loc['Total', col]:.2f}L"
     
     st.table(results_df.T)  # Transpose the dataframe to switch rows and columns
 
@@ -164,7 +166,7 @@ def main():
     st.write(f"""
     The equity is calculated as follows:
     - At top quartile performance: Yearly values as specified in the sidebar
-    - At median performance: {median_equity_ratio:.4f} of the top quartile value for each year. For eg. at median performance the equity allocated is 12.5% and at quartile performance the equity allocated is 15%, then this ratio is 0.833 (12.5%/15%)
+    - At median performance: {median_equity_ratio:.4f} of the top quartile value for each year
     - Minimum equity per year: As specified in the sidebar for each year
     - Above top quartile: Increases logarithmically (base 3)
     - Below median: Scales linearly down to the minimum
@@ -174,12 +176,11 @@ def main():
     st.write(f"""
     The bonus is calculated using the formula:
     ```
-    Bonus = (Bonus Base * Base Salary) * (Final Equity / Base Equity)
+    Bonus = Target Bonus * (log(Actual Revenue / Top Quartile Revenue, 3) + 1)
     ```
     Where:
-    - Bonus Base is {bonus_base_percentage:.1f}% of the base salary
-    - Final Equity is the calculated equity based on performance
-    - Base Equity is the target equity for top quartile performance
+    - Target Bonus is {bonus_base_percentage:.1f}% of the base salary
+    - The logarithmic function scales the bonus based on performance relative to the top quartile benchmark
 
     For the first year, the joining bonus of ₹{joining_bonus_lakhs:.2f} lakhs is subtracted from the calculated bonus.
     """)
