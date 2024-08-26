@@ -262,8 +262,8 @@ def main():
     1. Base salary to be 1cr(approx. 6 in hand)
     2. At median performance total equity to be 10%
     3. At top quartile performance equity to be 15%
-    3.1. median to quartile ratio is set at 0.66667 (10/15).
-    3.2. You can change this ratio to make suitable adjustments.
+    - median to quartile ratio is set at 0.66667 (10/15).
+    - You can change this ratio to make suitable adjustments.
     4. At top decile performance equity to be uncapped or capped as per mutual understanding
     5. Floor of 8% equity
     6. All of this can be adjusted from the frontend.
