@@ -256,5 +256,21 @@ def main():
     This allows for easy comparison of potential outcomes based on different performance levels.
     """)
 
+    st.subheader("Potential compensation")
+    st.write("""
+    Below are some considerations I am proposing:
+    1. Base salary to be 1cr(approx. 6 in hand)
+    2. At median performance total equity to be 10%
+    3. At top quartile performance equity to be 15%
+    4. At top decile performance equity to be uncapped or capped as per mutual understanding
+    5. Floor of 8% equity
+    6. All of this can be adjusted from the frontend.
+    7. The bonus is calculated on a multiple of base salary, which can be adjusted.
+    8. The joining bonus can be specified which can be adjusted against the first year bonus.
+    9. For a higher base, the bonus multiple can be adjusted so that overall comp is within range.
+    
+    Feel free to play with all  ariables to figure what works for all of us.
+    """)
+
 if __name__ == "__main__":
     main()
