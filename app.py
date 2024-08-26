@@ -256,5 +256,104 @@ def main():
     This allows for easy comparison of potential outcomes based on different performance levels.
     """)
 
+    st.header("SaaS Compensation Calculator User Guide")
+
+    st.markdown("""
+    Welcome to the **CompCal** app! This tool is designed to help you calculate and visualize compensation for SaaS companies, taking into account factors like base salary, equity, bonuses, and revenue performance. Here’s a step-by-step guide to get the most out of the app.
+
+    ## Exploring the App
+
+    ### 1. Input Parameters (Set Your Scenario)
+
+    In the sidebar, you’ll find various input fields that let you customize the scenario. Let’s break them down:
+
+    - **Exchange Rate (USD to INR):** This is the conversion rate from US dollars to Indian rupees. This rate impacts all salary and bonus calculations in the app.
+
+    - **Initial Base Salary (Lakhs INR):** This is the starting salary (in lakhs) for the first year. The salary can increase each year based on the **Annual Salary Increase Rate**.
+
+    - **Joining Bonus (Lakhs INR):** A one-time bonus given in the first year. This bonus is subtracted from the first year’s calculated bonus.
+
+    - **Annual Salary Increase Rate (%):** This rate determines how much the base salary increases each year. For example, a 10% rate means the salary for year 2 is 110% of the year 1 salary.
+
+    - **Bonus Base (% of Base Salary):** This is the target bonus percentage of the base salary. For example, 100% means the bonus equals the base salary if performance meets expectations.
+
+    - **Equity Parameters:** Equity represents ownership in the company and is a critical part of compensation in startups. You can adjust:
+    - **Base Equity (%):** The target equity given each year.
+    - **Min Equity (%):** The minimum possible equity based on poor performance.
+    - **Max Equity (%):** The maximum possible equity based on outstanding performance.
+    - **Median to Top Quartile Equity Ratio:** This ratio adjusts equity when performance is median-level compared to top quartile performance.
+
+    - **Actual Revenue (Million USD):** Enter the expected revenue for each year. The app uses this to calculate how well the company performs against benchmarks.
+
+    ### 2. Understanding the Benchmarks
+
+    The app compares actual revenue against three benchmarks:
+    - **Median:** Average performance.
+    - **Top Quartile:** Strong performance in the top 25%.
+    - **Top Decile:** Outstanding performance in the top 10%.
+
+    These benchmarks help you see where your company’s performance stands.
+
+    ### 3. How Calculations Work
+
+    The app computes equity, bonuses, and total compensation based on the inputs and benchmarks.
+
+    - **Equity Calculation:**
+    - **Below Median:** Equity scales down to the minimum value.
+    - **Between Median and Top Quartile:** Equity increases linearly.
+    - **Above Top Quartile:** Equity increases logarithmically (less aggressively) as performance improves further.
+
+    **Formula:**
+    ```
+    if performance <= median:
+    equity = max(min_equity, base_equity * median_ratio * (performance / median))
+    elif performance <= top_quartile:
+    equity = base_equity * median_ratio + (base_equity - base_equity * median_ratio) * ((performance - median) / (top_quartile - median))
+    else:
+    equity = base_equity * (math.log(performance / top_quartile, 3) + 1)
+    ```
+    - **Bonus Calculation:**
+    - The bonus is computed as a percentage of the base salary, adjusted by performance compared to the top quartile revenue using a logarithmic function. For the first year, the joining bonus is subtracted from the total bonus.
+
+    **Formula:**
+    ```
+    target_bonus = base_salary * (bonus_base_percentage / 100)
+    bonus = target_bonus * (math.log(performance / top_quartile, 3) + 1)
+    ```
+    ### 4. Visualizing Performance
+
+    The app provides a chart comparing actual revenue against benchmarks, helping you visualize your company’s performance. This chart gives a quick overview of how your expected revenue measures up.
+
+    ### 5. Reviewing Results
+
+    The app summarizes the results in a table, showing:
+    - **Actual Revenue** for each year.
+    - **Base Salary** progression over the years.
+    - **Equity, Cash Bonus, and Total Compensation** for each year and in total.
+
+    ### 6. Understanding the Results
+
+    The app also provides detailed explanations of how each component is calculated:
+    - **Base Salary:** Starts with the initial salary and grows by the defined percentage each year.
+    - **Equity:** Adjusts based on performance, with the highest potential when performance exceeds top quartile benchmarks.
+    - **Bonus:** Scales with performance, rewarding higher revenue with a logarithmically increasing bonus.
+
+    ### Example Scenario
+
+    Imagine a scenario where your company expects to achieve the following revenues:
+    - Year 1: $0.75M
+    - Year 2: $1.875M
+    - Year 3: $5.25M
+    - Year 4: $12.6M
+
+    Using these inputs, the app will calculate the resulting equity, bonus, and total compensation based on how your performance compares with benchmarks like the top decile.
+
+    ## Experiment and Play
+
+    Feel free to experiment with different values in the sidebar. See how changes in salary, revenue, or equity parameters affect the total compensation. This interactive approach helps you understand how each factor contributes to the overall compensation package.
+
+    Happy exploring!
+    """)
+
 if __name__ == "__main__":
     main()
