@@ -221,15 +221,18 @@ def main():
             free_cash_flow[year], growth_rates, exchange_rate
         )
         
-        # Calculate median equity and compensation
-        median_equity = calculate_equity(year_benchmarks['Median'], year_benchmarks, equity_levels[year-1], growth_rates)
-        median_total = base_salary * (1 + bonus_base_percentage / 100) * (year_benchmarks['Median'] / year_benchmarks['Top Quartile']) + base_salary
+        median_equity, _, median_total, _, _, _ = calculate_compensation(
+            year_benchmarks['Median'], year, year_benchmarks, base_salary, joining_bonus_lakhs, 
+            equity_levels[year-1], bonus_base_percentage, excess_bonus_percentage, 
+            free_cash_flow[year], growth_rates, exchange_rate
+        )
         
-        # Calculate top quartile equity and compensation
-        quartile_equity = calculate_equity(year_benchmarks['Top Quartile'], year_benchmarks, equity_levels[year-1], growth_rates)
-        quartile_total = base_salary * (1 + bonus_base_percentage / 100) * (year_benchmarks['Top Quartile'] / year_benchmarks['Top Quartile']) + base_salary
+        quartile_equity, _, quartile_total, _, _, _ = calculate_compensation(
+            year_benchmarks['Top Quartile'], year, year_benchmarks, base_salary, joining_bonus_lakhs, 
+            equity_levels[year-1], bonus_base_percentage, excess_bonus_percentage, 
+            free_cash_flow[year], growth_rates, exchange_rate
+        )
 
-        # Append results for display
         results['Actual Revenue'].append(actual_revenue[year])
         results['Free Cash Flow'].append(free_cash_flow[year])
         results['Base Salary'].append(base_salary)
@@ -244,9 +247,13 @@ def main():
         results['Top Quartile Equity'].append(quartile_equity)
         results['Top Quartile Comp'].append(quartile_total)
 
-    st.header("Compensation Results")
+    # Create DataFrame
     results_df = pd.DataFrame(results)
+    
+    # Transpose the DataFrame
     results_df = results_df.transpose()
+    
+    # Set column names
     results_df.columns = ['Year 1', 'Year 2', 'Year 3', 'Year 4']
 
     def format_value(val, is_percentage=False, is_money=False, is_usd=False):
