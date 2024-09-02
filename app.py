@@ -1,100 +1,163 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import math
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
 
-# Function to add text logo
 def add_text_logo():
-    st.markdown(
+    st.sidebar.markdown(
         """
         <style>
         .logo-text {
             font-size: 24px;
             font-weight: bold;
             color: #4682B4;
-            text-align: right;
-            margin-right: 20px;
+            text-align: left;
+            margin-left: 20px;
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
-    st.markdown('<p class="logo-text">CompCal</p>', unsafe_allow_html=True)
+    st.sidebar.markdown('<p class="logo-text">CompCal</p>', unsafe_allow_html=True)
 
-def calculate_equity(performance, median, top_quartile, top_decile, base_equity, min_equity, max_equity, median_ratio):
-    if performance <= median:
-        equity = max(min_equity, base_equity * median_ratio * (performance / median))
-    elif performance <= top_quartile:
-        equity = base_equity * median_ratio + (base_equity - base_equity * median_ratio) * ((performance - median) / (top_quartile - median))
+def calculate_equity(performance, benchmarks, equity_level, growth_rates):
+    if performance <= benchmarks['Median']:
+        return equity_level['Minimum'] + (equity_level['Median'] - equity_level['Minimum']) * (performance / benchmarks['Median']) ** growth_rates['Min to Median']
+    elif performance <= benchmarks['Top Quartile']:
+        return equity_level['Median'] + (equity_level['Top Quartile'] - equity_level['Median']) * ((performance - benchmarks['Median']) / (benchmarks['Top Quartile'] - benchmarks['Median'])) ** growth_rates['Median to Top Quartile']
+    elif performance <= benchmarks['Top Decile']:
+        return equity_level['Top Quartile'] + (equity_level['Top Decile'] - equity_level['Top Quartile']) * ((performance - benchmarks['Top Quartile']) / (benchmarks['Top Decile'] - benchmarks['Top Quartile'])) ** growth_rates['Top Quartile to Top Decile']
     else:
-        equity = base_equity * (math.log(performance / top_quartile, 3) + 1)
-    return min(max_equity, equity)
+        return equity_level['Top Decile'] + (equity_level['Maximum'] - equity_level['Top Decile']) * ((performance - benchmarks['Top Decile']) / benchmarks['Top Decile']) ** growth_rates['Above Top Decile']
 
-def calculate_cash_bonus(performance, top_quartile, base_salary, bonus_base_percentage):
-    target_bonus = base_salary * (bonus_base_percentage / 100)
-    return target_bonus * (math.log(performance / top_quartile, 3) + 1)
+def calculate_proportional_bonus(actual_revenue, target_revenue, base_salary, bonus_base_percentage):
+    return (actual_revenue / target_revenue) * (base_salary * (bonus_base_percentage / 100))
 
-def calculate_compensation(revenue, year, benchmarks, base_salary, joining_bonus, equity_distribution, bonus_base_percentage, min_equity_percentages, max_equity_percentages, median_equity_ratio):
-    top_quartile = benchmarks.loc[year-1, 'Top Quartile']
-    top_decile = benchmarks.loc[year-1, 'Top Decile']
-    median = benchmarks.loc[year-1, 'Median']
+def calculate_excess_revenue_bonus(actual_revenue, target_revenue, exchange_rate, excess_bonus_percentage):
+    # Calculate the excess revenue in USD
+    excess_revenue_usd = actual_revenue - target_revenue
     
-    base_equity = equity_distribution[year-1]
-    min_equity = min_equity_percentages[year-1]
-    max_equity = max_equity_percentages[year-1]
+    # Only consider positive excess revenue
+    if excess_revenue_usd > 0:
+        # Convert the excess revenue to INR
+        excess_revenue_inr = excess_revenue_usd * exchange_rate * 1000000
+        
+        # Calculate the excess bonus in INR
+        excess_bonus = excess_revenue_inr * (excess_bonus_percentage / 100) * (1/100000)
+    else:
+        # If excess revenue is not positive, the bonus is zero
+        excess_bonus = 0
     
-    equity = calculate_equity(revenue, median, top_quartile, top_decile, base_equity, min_equity, max_equity, median_equity_ratio)
-    bonus = calculate_cash_bonus(revenue, top_quartile, base_salary, bonus_base_percentage)
+    return excess_bonus
+
+def calculate_compensation(revenue, year, benchmarks, base_salary, joining_bonus, equity_level, bonus_base_percentage, excess_bonus_percentage, free_cash_flow, growth_rates, exchange_rate):
+    equity = calculate_equity(revenue, benchmarks, equity_level, growth_rates)
+    
+    target_revenue = benchmarks['Top Quartile']
+    
+    # Proportional Bonus Method
+    proportional_bonus = calculate_proportional_bonus(revenue, target_revenue, base_salary, bonus_base_percentage)
+    total_comp_proportional = base_salary + proportional_bonus
     
     if year == 1:
-        bonus = max(0, bonus - joining_bonus)
-        total_comp = base_salary + joining_bonus + bonus
-    else:
-        total_comp = base_salary + bonus
+        # total_comp_proportional += joining_bonus
+        total_comp_proportional = max(0, total_comp_proportional - joining_bonus)
     
-    return equity, bonus, total_comp
+    # Excess Revenue Bonus Method
+    excess_bonus = calculate_excess_revenue_bonus(revenue, target_revenue, exchange_rate, excess_bonus_percentage)
+    base_bonus = base_salary * (bonus_base_percentage / 100)
+    
+    total_bonus_excess = base_bonus + excess_bonus
+    
+    if year == 1:
+        total_bonus_excess = max(0, total_bonus_excess - joining_bonus)
+    
+    total_comp_excess = base_salary + total_bonus_excess
+    
+    # if year == 1:
+    #     total_comp_excess += joining_bonus
+    
+    return equity, proportional_bonus, total_comp_proportional, base_bonus, excess_bonus, total_comp_excess
+
+
+def save_results(results_df, fig):
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        results_df.to_excel(writer, sheet_name='Compensation Results')
+        workbook = writer.book
+        worksheet = writer.sheets['Compensation Results']
+        
+        chart_img = BytesIO()
+        fig.savefig(chart_img, format='png')
+        worksheet.insert_image('M2', '', {'image_data': chart_img})
+        
+    buffer.seek(0)
+    b64 = base64.b64encode(buffer.read()).decode()
+    href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="compensation_results.xlsx">Download Results</a>'
+    return href
 
 def main():
     st.set_page_config(layout="wide")
     add_text_logo()
     st.title("SaaS Compensation Calculator")
 
-    # Input fields
     st.sidebar.header("Input Parameters")
     exchange_rate = st.sidebar.number_input("USD to INR Exchange Rate", min_value=1.0, value=83.0, step=0.1, format="%.1f")
     
     st.sidebar.subheader("Salary and Bonus Parameters")
-    initial_base_salary_lakhs = st.sidebar.number_input("Initial Base Salary (Lakhs INR)", min_value=0.0, value=100.0, step=1.0, format="%.1f")
-    joining_bonus_lakhs = st.sidebar.number_input("Joining Bonus (Lakhs INR)", min_value=0.0, value=20.0, step=1.0, format="%.1f")
+    initial_base_salary_lakhs = st.sidebar.number_input("Initial Base Salary (Lakhs INR)", min_value=0.0, value=65.0, step=1.0, format="%.1f")
+    joining_bonus_lakhs = st.sidebar.number_input("Joining Bonus (Lakhs INR)", min_value=0.0, value=30.0, step=1.0, format="%.1f")
     salary_increase_rate = st.sidebar.number_input("Annual Salary Increase Rate (%)", min_value=0.0, value=10.0, step=0.1, format="%.1f") / 100
-    bonus_base_percentage = st.sidebar.number_input("Bonus Base (% of Base Salary)", min_value=0.0, value=100.0, step=1.0, format="%.1f")
+    st.sidebar.subheader("Bonus Parameters")
+    bonus_base_percentage = st.sidebar.number_input("Bonus Base (% of Base Salary)", min_value=0.0, value=125.0, step=1.0, format="%.1f")
+    excess_bonus_percentage = st.sidebar.number_input("Excess Bonus (% of Base Salary per $1M Excess Revenue)", min_value=0.0, value=10.0, step=0.1, format="%.1f")
 
     st.sidebar.subheader("Equity Parameters")
-    col1, col2, col3 = st.sidebar.columns(3)
-    equity_distribution = []
-    min_equity_percentages = []
-    max_equity_percentages = []
-    for i in range(4):
-        with col1:
-            equity = st.number_input(f"Base Equity Year {i+1} (%)", min_value=0.0, value=4.0 if i < 3 else 3.0, step=0.1, format="%.1f")
-            equity_distribution.append(equity)
-        with col2:
-            min_equity = st.number_input(f"Min Equity Year {i+1} (%)", min_value=0.0, value=2.0 if i < 3 else 1.5, step=0.1, format="%.1f")
-            min_equity_percentages.append(min_equity)
-        with col3:
-            max_equity = st.number_input(f"Max Equity Year {i+1} (%)", min_value=0.0, value=6.0 if i < 3 else 4.5, step=0.1, format="%.1f")
-            max_equity_percentages.append(max_equity)
-
-    median_equity_ratio = st.sidebar.number_input("Median to Top Quartile Equity Ratio", min_value=0.0, max_value=1.0, value=0.8333, step=0.01, format="%.4f")
-
-    # Input for actual revenue for each year
-    st.sidebar.subheader("Actual Revenue")
-    actual_revenue = {}
+    st.sidebar.write("Specify the equity percentages for each year at different performance levels:")
+    equity_levels = []
+    
     for year in range(1, 5):
-        actual_revenue[year] = st.sidebar.number_input(f"Actual Revenue for Year {year} (Million USD)", 
-                                                       min_value=0.0, value=0.75 * (2 ** (year - 1)), step=0.1, format="%.2f")
+        year_equity = {}
+        col1, col2, col3, col4, col5 = st.sidebar.columns(5)
 
-    # Define benchmarks
+        # Set the default values based on the year
+        if year == 1:
+            year_equity['Minimum'] = col1.number_input(f"Min Y{year}", key=f"min_eq_{year}", value=1.0, step=0.1, format="%.1f")
+            year_equity['Median'] = col2.number_input(f"Med Y{year}", key=f"med_eq_{year}", value=2.0, step=0.1, format="%.1f")
+            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=3.0, step=0.1, format="%.1f")
+            year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=4.0, step=0.1, format="%.1f")
+            year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=5.0, step=0.1, format="%.1f")
+        elif year == 2:
+            year_equity['Minimum'] = col1.number_input(f"Min Y{year}", key=f"min_eq_{year}", value=1.0, step=0.1, format="%.1f")
+            year_equity['Median'] = col2.number_input(f"Med Y{year}", key=f"med_eq_{year}", value=2.0, step=0.1, format="%.1f")
+            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=3.0, step=0.1, format="%.1f")
+            year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=4.0, step=0.1, format="%.1f")
+            year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=5.0, step=0.1, format="%.1f")
+        elif year == 3:
+            year_equity['Minimum'] = col1.number_input(f"Min Y{year}", key=f"min_eq_{year}", value=1.0, step=0.1, format="%.1f")
+            year_equity['Median'] = col2.number_input(f"Med Y{year}", key=f"med_eq_{year}", value=2.0, step=0.1, format="%.1f")
+            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=4.0, step=0.1, format="%.1f")
+            year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=4.0, step=0.1, format="%.1f")
+            year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=5.0, step=0.1, format="%.1f")
+        else:  # year == 4
+            year_equity['Minimum'] = col1.number_input(f"Min Y{year}", key=f"min_eq_{year}", value=1.0, step=0.1, format="%.1f")
+            year_equity['Median'] = col2.number_input(f"Med Y{year}", key=f"med_eq_{year}", value=2.0, step=0.1, format="%.1f")
+            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=1.5, step=0.1, format="%.1f")
+            year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=1.5, step=0.1, format="%.1f")
+            year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=1.5, step=0.1, format="%.1f")
+        
+        equity_levels.append(year_equity)
+
+    st.sidebar.subheader("Equity Growth Rates")
+    growth_rates = {
+        'Min to Median': st.sidebar.number_input("Growth Rate: Minimum to Median", min_value=0.1, value=1.0, step=0.1, format="%.1f"),
+        'Median to Top Quartile': st.sidebar.number_input("Growth Rate: Median to Top Quartile", min_value=0.1, value=1.0, step=0.1, format="%.1f"),
+        'Top Quartile to Top Decile': st.sidebar.number_input("Growth Rate: Top Quartile to Top Decile", min_value=0.1, value=1.0, step=0.1, format="%.1f"),
+        'Above Top Decile': st.sidebar.number_input("Growth Rate: Above Top Decile", min_value=0.1, value=0.5, step=0.1, format="%.1f")
+    }
+
     benchmarks = pd.DataFrame({
         'Year': [1, 2, 3, 4],
         'Top Decile': [1.5, 5.5, 11.4, 17.0],
@@ -102,7 +165,16 @@ def main():
         'Median': [0.4, 0.8, 1.7, 3.0]
     })
 
-    # Performance visualization
+    st.sidebar.subheader("Expected Revenue and Free Cash Flow")
+    col1, col2 = st.sidebar.columns(2)
+    actual_revenue = {}
+    free_cash_flow = {}
+    for year in range(1, 5):
+        actual_revenue[year] = col1.number_input(f"Revenue Year {year} ($M)", 
+                                                 min_value=0.0, value=benchmarks.loc[year-1, 'Top Quartile'], step=0.1, format="%.2f")
+        free_cash_flow[year] = col2.number_input(f"FCF Year {year} ($M)", 
+                                                 min_value=0.0, value=actual_revenue[year] * 0.2, step=0.1, format="%.2f")
+
     st.header("Performance Visualization")
     chart_data = benchmarks.melt(id_vars=['Year'], var_name='Benchmark', value_name='Revenue')
     actual_data = pd.DataFrame({
@@ -112,247 +184,210 @@ def main():
     })
     chart_data = pd.concat([chart_data, actual_data])
     
-    st.line_chart(chart_data.pivot(index='Year', columns='Benchmark', values='Revenue'))
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for column in ['Actual', 'Median', 'Top Quartile', 'Top Decile']:
+        ax.plot(chart_data[chart_data['Benchmark'] == column]['Year'], 
+                chart_data[chart_data['Benchmark'] == column]['Revenue'], 
+                marker='o', label=column)
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Revenue (Million USD)')
+    ax.set_title('Performance Comparison')
+    ax.legend()
+    st.pyplot(fig)
 
-    # Calculate results
     results = {
         'Actual Revenue': [],
+        'Free Cash Flow': [],
         'Base Salary': [],
+        'Proportional Bonus': [],
+        'Total Comp (Proportional)': [],
+        'Base Bonus': [],
+        'Excess Revenue Bonus': [],
+        'Total Comp (Excess Revenue)': [],
         'Equity': [],
-        'Cash Bonus': [],
-        'Total Compensation': [],
         'Median Equity': [],
         'Median Comp': [],
         'Top Quartile Equity': [],
         'Top Quartile Comp': [],
-        'Top Decile Equity': [],
-        'Top Decile Comp': []
     }
 
     for year in range(1, 5):
         base_salary = initial_base_salary_lakhs * (1 + salary_increase_rate) ** (year - 1)
+        year_benchmarks = benchmarks.loc[year-1, ['Median', 'Top Quartile', 'Top Decile']].to_dict()
         
-        equity, bonus, total_comp = calculate_compensation(actual_revenue[year], year, benchmarks, base_salary, joining_bonus_lakhs, equity_distribution, bonus_base_percentage, min_equity_percentages, max_equity_percentages, median_equity_ratio)
-        median_equity, median_bonus, median_total = calculate_compensation(benchmarks.loc[year-1, 'Median'], year, benchmarks, base_salary, joining_bonus_lakhs, equity_distribution, bonus_base_percentage, min_equity_percentages, max_equity_percentages, median_equity_ratio)
-        quartile_equity, quartile_bonus, quartile_total = calculate_compensation(benchmarks.loc[year-1, 'Top Quartile'], year, benchmarks, base_salary, joining_bonus_lakhs, equity_distribution, bonus_base_percentage, min_equity_percentages, max_equity_percentages, median_equity_ratio)
-        decile_equity, decile_bonus, decile_total = calculate_compensation(benchmarks.loc[year-1, 'Top Decile'], year, benchmarks, base_salary, joining_bonus_lakhs, equity_distribution, bonus_base_percentage, min_equity_percentages, max_equity_percentages, median_equity_ratio)
+        equity, proportional_bonus, total_comp_proportional, base_bonus, excess_bonus, total_comp_excess = calculate_compensation(
+            actual_revenue[year], year, year_benchmarks, base_salary, joining_bonus_lakhs, 
+            equity_levels[year-1], bonus_base_percentage, excess_bonus_percentage, 
+            free_cash_flow[year], growth_rates, exchange_rate
+        )
+        
+        # Calculate median equity and compensation
+        median_equity = calculate_equity(year_benchmarks['Median'], year_benchmarks, equity_levels[year-1], growth_rates)
+        median_total = base_salary * (1 + bonus_base_percentage / 100) * (year_benchmarks['Median'] / year_benchmarks['Top Quartile']) + base_salary
+        
+        # Calculate top quartile equity and compensation
+        quartile_equity = calculate_equity(year_benchmarks['Top Quartile'], year_benchmarks, equity_levels[year-1], growth_rates)
+        quartile_total = base_salary * (1 + bonus_base_percentage / 100) * (year_benchmarks['Top Quartile'] / year_benchmarks['Top Quartile']) + base_salary
 
+        # Append results for display
         results['Actual Revenue'].append(actual_revenue[year])
+        results['Free Cash Flow'].append(free_cash_flow[year])
         results['Base Salary'].append(base_salary)
+        results['Proportional Bonus'].append(proportional_bonus)
+        results['Total Comp (Proportional)'].append(total_comp_proportional)
+        results['Base Bonus'].append(base_bonus)
+        results['Excess Revenue Bonus'].append(excess_bonus)
+        results['Total Comp (Excess Revenue)'].append(total_comp_excess)
         results['Equity'].append(equity)
-        results['Cash Bonus'].append(bonus)
-        results['Total Compensation'].append(total_comp)
         results['Median Equity'].append(median_equity)
         results['Median Comp'].append(median_total)
         results['Top Quartile Equity'].append(quartile_equity)
         results['Top Quartile Comp'].append(quartile_total)
-        results['Top Decile Equity'].append(decile_equity)
-        results['Top Decile Comp'].append(decile_total)
 
-    # Display results in a table
     st.header("Compensation Results")
-    results_df = pd.DataFrame(results, index=['Year 1', 'Year 2', 'Year 3', 'Year 4'])
-    
-    # Calculate totals
-    total_actual_revenue = sum(results['Actual Revenue'])
-    total_base_salary = sum(results['Base Salary'])
-    total_equity = sum(results['Equity'])
-    total_cash_bonus = sum(results['Cash Bonus'])
-    total_compensation = sum(results['Total Compensation'])
-    total_median_equity = sum(results['Median Equity'])
-    total_median_comp = sum(results['Median Comp'])
-    total_top_quartile_equity = sum(results['Top Quartile Equity'])
-    total_top_quartile_comp = sum(results['Top Quartile Comp'])
-    total_top_decile_equity = sum(results['Top Decile Equity'])
-    total_top_decile_comp = sum(results['Top Decile Comp'])
+    results_df = pd.DataFrame(results)
+    results_df = results_df.transpose()
+    results_df.columns = ['Year 1', 'Year 2', 'Year 3', 'Year 4']
 
-    # Add total row
-    results_df.loc['Total'] = [
-        total_actual_revenue,
-        total_base_salary,
-        total_equity,
-        total_cash_bonus,
-        total_compensation,
-        total_median_equity,
-        total_median_comp,
-        total_top_quartile_equity,
-        total_top_quartile_comp,
-        total_top_decile_equity,
-        total_top_decile_comp
-    ]
-    
-    # Format the dataframe
+    def format_value(val, is_percentage=False, is_money=False, is_usd=False):
+        if pd.isna(val):
+            return ''
+        if is_percentage:
+            return f"{val:.2f}%"
+        if is_money:
+            return f"₹{val:.2f}L"
+        if is_usd:
+            return f"${val:.2f}M"
+        return f"{val:.2f}"
+
     for col in results_df.columns:
-        if col in ['Equity', 'Median Equity', 'Top Quartile Equity', 'Top Decile Equity']:
-            results_df[col] = results_df[col].apply(lambda x: f"{x:.2f}%")
-        elif col == 'Actual Revenue':
-            results_df[col] = results_df[col].apply(lambda x: f"${x:.2f}M")
-        else:
-            results_df[col] = results_df[col].apply(lambda x: f"₹{x:.2f}L")
-    
-    # Highlight total row
-    def highlight_total(row):
-        if row.name == 'Total':
-            return ['background-color: yellow'] * len(row)
-        return [''] * len(row)
+        for idx in results_df.index:
+            value = results_df.loc[idx, col]
+            if 'Equity' in idx:
+                results_df.loc[idx, col] = format_value(value, is_percentage=True)
+            elif 'Salary' in idx or 'Bonus' in idx or 'Comp' in idx:
+                results_df.loc[idx, col] = format_value(value, is_money=True)
+            elif 'Revenue' in idx or 'Flow' in idx:
+                results_df.loc[idx, col] = format_value(value, is_usd=True)
 
-    st.table(results_df.T.style.apply(highlight_total, axis=1))
+    def highlight_rows(row):
+        styles = [''] * len(row)
+        if row.name in ['Total Comp (Proportional)', 'Total Comp (Excess Revenue)']:
+            styles = ['background-color: yellow; font-weight: bold'] * len(row)
+        elif 'Bonus' in row.name:
+            styles = ['background-color: lightblue'] * len(row)
+        return styles
 
-    # Display benchmarks
-    st.header("Performance Benchmarks (Million USD)")
-    st.table(benchmarks.set_index('Year'))
+    styled_df = results_df.style.apply(highlight_rows, axis=1)
+    st.write(styled_df.to_html(escape=False), unsafe_allow_html=True)
 
-    # Explanation of calculations
+    if st.button("Save Results"):
+        href = save_results(results_df, fig)
+        st.markdown(href, unsafe_allow_html=True)
+
     st.header("Explanation of Calculations")
-    st.subheader("Base Salary Calculation")
-    st.write(f"""
-    The base salary starts at ₹{initial_base_salary_lakhs:.2f} lakhs and increases by {salary_increase_rate*100:.1f}% each year.
-    """)
 
-    st.subheader("Equity Calculation")
-    st.write(f"""
-    The equity is calculated as follows:
-    - At top quartile performance: Yearly values as specified in the sidebar
-    - At median performance: {median_equity_ratio:.4f} of the top quartile value for each year
-    - Minimum equity per year: As specified in the sidebar for each year
-    - Maximum equity per year: As specified in the sidebar for each year
-    - Above top quartile: Increases logarithmically (base 3)
-    - Below median: Scales linearly down to the minimum
-    The total equity over 4 years is the sum of the equity percentages for each year.
-    """)
-
-    st.subheader("Bonus Calculation")
-    st.write(f"""
-    The bonus is calculated using the formula:
-    ```
-    Bonus = Target Bonus * (log(Actual Revenue / Top Quartile Revenue, 3) + 1)
-    ```
-    Where:
-    - Target Bonus is {bonus_base_percentage:.1f}% of the base salary
-    - The logarithmic function scales the bonus based on performance relative to the top quartile benchmark
-
-    For the first year, the joining bonus of ₹{joining_bonus_lakhs:.2f} lakhs is subtracted from the calculated bonus.
-    """)
-
-    st.subheader("Total Compensation")
+    st.subheader("Revenue Benchmarks")
     st.write("""
-    The total compensation for each year is calculated as:
-    ```
-    Total Compensation = Base Salary + Cash Bonus
-    ```
-    For the first year, the joining bonus is included in the total compensation.
+    The revenue benchmarks are based on the ChartMogul SaaS Growth Report:
 
-    The total compensation over 4 years is the sum of the total compensation for each year.
-    """)
+    **Median**: 
+    - Year 1: $0.4M
+    - Year 2: $0.8M
+    - Year 3: $1.7M
+    - Year 4: $3.0M
 
-    st.subheader("Performance Scenarios")
-    st.write("""
-    The calculator provides compensation details for different performance scenarios:
-    1. Actual Performance: Based on the revenue input for each year
-    2. Median Performance: Compensation if revenue matches the median benchmark
-    3. Top Quartile Performance: Compensation if revenue matches the top quartile benchmark
-    4. Top Decile Performance: Compensation if revenue matches the top decile benchmark
-
-    This allows for easy comparison of potential outcomes based on different performance levels.
-    """)
-
-    st.header("SaaS Compensation Calculator User Guide")
-
-    st.markdown("""
-    Welcome to the **CompCal** app! This tool is designed to help you calculate and visualize compensation for SaaS companies, taking into account factors like base salary, equity, bonuses, and revenue performance. Here’s a step-by-step guide to get the most out of the app.
-
-    ## Exploring the App
-
-    ### 1. Input Parameters (Set Your Scenario)
-
-    In the sidebar, you’ll find various input fields that let you customize the scenario. Let’s break them down:
-
-    - **Exchange Rate (USD to INR):** This is the conversion rate from US dollars to Indian rupees. This rate impacts all salary and bonus calculations in the app.
-
-    - **Initial Base Salary (Lakhs INR):** This is the starting salary (in lakhs) for the first year. The salary can increase each year based on the **Annual Salary Increase Rate**.
-
-    - **Joining Bonus (Lakhs INR):** A one-time bonus given in the first year. This bonus is subtracted from the first year’s calculated bonus.
-
-    - **Annual Salary Increase Rate (%):** This rate determines how much the base salary increases each year. For example, a 10% rate means the salary for year 2 is 110% of the year 1 salary.
-
-    - **Bonus Base (% of Base Salary):** This is the target bonus percentage of the base salary. For example, 100% means the bonus equals the base salary if performance meets expectations.
-
-    - **Equity Parameters:** Equity represents ownership in the company and is a critical part of compensation in startups. You can adjust:
-    - **Base Equity (%):** The target equity given each year.
-    - **Min Equity (%):** The minimum possible equity based on poor performance.
-    - **Max Equity (%):** The maximum possible equity based on outstanding performance.
-    - **Median to Top Quartile Equity Ratio:** This ratio adjusts equity when performance is median-level compared to top quartile performance.
-
-    - **Actual Revenue (Million USD):** Enter the expected revenue for each year. The app uses this to calculate how well the company performs against benchmarks.
-
-    ### 2. Understanding the Benchmarks
-
-    The app compares actual revenue against three benchmarks:
-    - **Median:** Average performance.
-    - **Top Quartile:** Strong performance in the top 25%.
-    - **Top Decile:** Outstanding performance in the top 10%.
-
-    These benchmarks help you see where your company’s performance stands.
-
-    ### 3. How Calculations Work
-
-    The app computes equity, bonuses, and total compensation based on the inputs and benchmarks.
-
-    - **Equity Calculation:**
-    - **Below Median:** Equity scales down to the minimum value.
-    - **Between Median and Top Quartile:** Equity increases linearly.
-    - **Above Top Quartile:** Equity increases logarithmically (less aggressively) as performance improves further.
-
-    **Formula:**
-    ```
-    if performance <= median:
-    equity = max(min_equity, base_equity * median_ratio * (performance / median))
-    elif performance <= top_quartile:
-    equity = base_equity * median_ratio + (base_equity - base_equity * median_ratio) * ((performance - median) / (top_quartile - median))
-    else:
-    equity = base_equity * (math.log(performance / top_quartile, 3) + 1)
-    ```
-    - **Bonus Calculation:**
-    - The bonus is computed as a percentage of the base salary, adjusted by performance compared to the top quartile revenue using a logarithmic function. For the first year, the joining bonus is subtracted from the total bonus.
-
-    **Formula:**
-    ```
-    target_bonus = base_salary * (bonus_base_percentage / 100)
-    bonus = target_bonus * (math.log(performance / top_quartile, 3) + 1)
-    ```
-    ### 4. Visualizing Performance
-
-    The app provides a chart comparing actual revenue against benchmarks, helping you visualize your company’s performance. This chart gives a quick overview of how your expected revenue measures up.
-
-    ### 5. Reviewing Results
-
-    The app summarizes the results in a table, showing:
-    - **Actual Revenue** for each year.
-    - **Base Salary** progression over the years.
-    - **Equity, Cash Bonus, and Total Compensation** for each year and in total.
-
-    ### 6. Understanding the Results
-
-    The app also provides detailed explanations of how each component is calculated:
-    - **Base Salary:** Starts with the initial salary and grows by the defined percentage each year.
-    - **Equity:** Adjusts based on performance, with the highest potential when performance exceeds top quartile benchmarks.
-    - **Bonus:** Scales with performance, rewarding higher revenue with a logarithmically increasing bonus.
-
-    ### Example Scenario
-
-    Imagine a scenario where your company expects to achieve the following revenues:
+    **Top Quartile**: 
     - Year 1: $0.75M
     - Year 2: $1.875M
     - Year 3: $5.25M
     - Year 4: $12.6M
 
-    Using these inputs, the app will calculate the resulting equity, bonus, and total compensation based on how your performance compares with benchmarks like the top decile.
+    **Top Decile**: 
+    - Year 1: $1.5M
+    - Year 2: $5.5M
+    - Year 3: $11.4M
+    - Year 4: $17.0M
+    """)
 
-    ## Experiment and Play
+    st.subheader("Equity Calculation")
+    st.write("""
+    The equity is calculated based on the performance levels set by the employer for each year. The growth between these levels is determined by the user-defined growth rates.
 
-    Feel free to experiment with different values in the sidebar. See how changes in salary, revenue, or equity parameters affect the total compensation. This interactive approach helps you understand how each factor contributes to the overall compensation package.
+    **Formulas:**
 
-    Happy exploring!
+    1. **If performance is less than or equal to the Median:**
+
+    Equity = Min + (Median - Min) × (Performance / Median) ^ (Min to Median Growth Rate)
+
+    2. **If performance is between the Median and Top Quartile:**
+
+    Equity = Median + (Top Quartile - Median) × ((Performance - Median) / (Top Quartile - Median)) ^ (Median to Top Quartile Growth Rate)
+
+    3. **If performance is between the Top Quartile and Top Decile:**
+
+    Equity = Top Quartile + (Top Decile - Top Quartile) × ((Performance - Top Quartile) / (Top Decile - Top Quartile)) ^ (Top Quartile to Top Decile Growth Rate)
+
+    4. **If performance is greater than the Top Decile:**
+
+    Equity = Top Decile + (Max - Top Decile) × ((Performance - Top Decile) / Top Decile) ^ (Above Top Decile Growth Rate)
+
+    The growth rates determine how quickly equity increases between performance levels.
+    """)
+
+    st.subheader("Bonus Calculation")
+    st.write("""
+    The bonus is calculated using two methods: **Proportional Bonus** and **Excess Revenue Bonus**. Both methods are explained below.
+
+    1. **Proportional Bonus Calculation:**
+
+    - If actual revenue is less than or equal to target revenue:
+        
+        Proportional Bonus = (Actual Revenue / Target Revenue) × (Base Salary × Bonus Base Percentage)
+        
+    - This bonus is proportional to the revenue achieved relative to the target revenue.
+
+    2. **Excess Revenue Bonus Calculation (Above Target Revenue):**
+
+    - If actual revenue exceeds target revenue:
+    
+        a. Calculate the base bonus:
+        
+            Base Bonus = Base Salary × Bonus Base Percentage
+
+        b. Calculate the excess revenue:
+        
+            Excess Revenue = Actual Revenue - Target Revenue
+
+        c. If Free Cash Flow (FCF) is positive, calculate the excess bonus:
+        
+            Excess Bonus = Excess Revenue × Excess Bonus Percentage
+
+        d. If Free Cash Flow (FCF) is negative:
+        
+            Excess Bonus = 0
+
+        e. Total Bonus is the sum of the base bonus and excess bonus:
+        
+            Total Bonus = Base Bonus + Excess Bonus
+
+    This structure ensures fair compensation for meeting targets and provides an additional incentive for exceeding targets while considering the company's profitability.
+    """)
+
+    st.subheader("Total Compensation")
+    st.write("""
+    The total compensation for each year is calculated using both the **Proportional Bonus** and **Excess Revenue Bonus** methods:
+
+    1. **Total Compensation (Proportional Bonus):**
+    
+    Total Compensation = Base Salary + Proportional Bonus
+
+    2. **Total Compensation (Excess Revenue Bonus):**
+    
+    Total Compensation = Base Salary + Total Bonus (Base Bonus + Excess Bonus)
+
+    - For the first year, the joining bonus is included in the total compensation.
+    - The base salary increases each year by the specified annual increase rate.
     """)
 
 if __name__ == "__main__":
