@@ -319,82 +319,114 @@ def main():
 
     st.subheader("Equity Calculation")
     st.write("""
-    The equity is calculated based on the performance levels set by the employer for each year. The growth between these levels is determined by the user-defined growth rates.
+    The equity calculation is based on company performance levels: Median, Top Quartile, and Top Decile. As your company’s revenue increases, the amount of equity awarded grows based on these benchmarks.
 
-    **Formulas:**
+    Here’s how the equity is calculated:
 
-    1. **If performance is less than or equal to the Median:**
+    **Formula 1: Performance ≤ Median**
 
-    Equity = Min + (Median - Min) × (Performance / Median) ^ (Min to Median Growth Rate)
+    If the company’s performance is below or equal to the median revenue benchmark, equity is calculated as:
 
-    2. **If performance is between the Median and Top Quartile:**
+    $$ 
+    Equity = Min + (Median - Min) \\times \\left( \\frac{Performance}{Median} \\right)^{\\text{Growth Rate from Min to Median}}
+    $$
 
-    Equity = Median + (Top Quartile - Median) × ((Performance - Median) / (Top Quartile - Median)) ^ (Median to Top Quartile Growth Rate)
+    **Formula 2: Median < Performance ≤ Top Quartile**
 
-    3. **If performance is between the Top Quartile and Top Decile:**
+    If performance is between the median and top quartile:
 
-    Equity = Top Quartile + (Top Decile - Top Quartile) × ((Performance - Top Quartile) / (Top Decile - Top Quartile)) ^ (Top Quartile to Top Decile Growth Rate)
+    $$ 
+    Equity = Median + (Top Quartile - Median) \\times \\left( \\frac{Performance - Median}{Top Quartile - Median} \\right)^{\\text{Growth Rate from Median to Top Quartile}}
+    $$
 
-    4. **If performance is greater than the Top Decile:**
+    **Formula 3: Top Quartile < Performance ≤ Top Decile**
 
-    Equity = Top Decile + (Max - Top Decile) × ((Performance - Top Decile) / Top Decile) ^ (Above Top Decile Growth Rate)
+    For performance between the top quartile and top decile:
 
-    The growth rates determine how quickly equity increases between performance levels.
+    $$ 
+    Equity = Top Quartile + (Top Decile - Top Quartile) \\times \\left( \\frac{Performance - Top Quartile}{Top Decile - Top Quartile} \\right)^{\\text{Growth Rate from Top Quartile to Top Decile}}
+    $$
+
+    **Formula 4: Performance > Top Decile**
+
+    If the company exceeds the top decile revenue benchmark:
+
+    $$ 
+    Equity = Top Decile + (Max - Top Decile) \\times \\left( \\frac{Performance - Top Decile}{Top Decile} \\right)^{\\text{Growth Rate Above Top Decile}}
+    $$
+
+    These formulas help determine how much equity employees earn based on how well the company performs compared to benchmarks.
     """)
 
     st.subheader("Bonus Calculation")
     st.write("""
-    The bonus is calculated using two methods: **Proportional Bonus** and **Excess Revenue Bonus**. Both methods are explained below.
+    Bonuses are calculated using two methods: **Proportional Bonus** and **Excess Revenue Bonus**.
 
-    1. **Proportional Bonus Calculation:**
+    **Proportional Bonus** rewards you based on how close or far you are from the target revenue. **Excess Revenue Bonus** rewards additional performance when actual revenue exceeds the target.
 
-    - If actual revenue is less than or equal to target revenue:
-        
-        Proportional Bonus = (Actual Revenue / Target Revenue) × (Base Salary × Bonus Base Percentage)
-        
-    - This bonus is proportional to the revenue achieved relative to the target revenue.
+    ### 1. Proportional Bonus Calculation:
 
-    2. **Excess Revenue Bonus Calculation (Above Target Revenue):**
+    If the company’s revenue is below or equal to the target revenue, the proportional bonus is:
 
-    - If actual revenue exceeds target revenue:
-    
-        a. Calculate the base bonus:
-        
-            Base Bonus = Base Salary × Bonus Base Percentage
+    $$
+    Proportional\\ Bonus = \\left( \\frac{\\text{Actual Revenue}}{\\text{Target Revenue}} \\right) \\times (\\text{Base Salary} \\times \\frac{\\text{Bonus Base Percentage}}{100})
+    $$
 
-        b. Calculate the excess revenue:
-        
-            Excess Revenue = Actual Revenue - Target Revenue
+    - This method ensures that the bonus is proportional to how close the actual revenue is to the target revenue.
 
-        c. If Free Cash Flow (FCF) is positive, calculate the excess bonus:
-        
-            Excess Bonus = Excess Revenue × Excess Bonus Percentage
+    ### 2. Excess Revenue Bonus Calculation:
 
-        d. If Free Cash Flow (FCF) is negative:
-        
-            Excess Bonus = 0
+    If the actual revenue exceeds the target revenue, you will earn an **Excess Revenue Bonus**:
 
-        e. Total Bonus is the sum of the base bonus and excess bonus:
-        
-            Total Bonus = Base Bonus + Excess Bonus
+    a. First, calculate the **Base Bonus**:
 
-    This structure ensures fair compensation for meeting targets and provides an additional incentive for exceeding targets while considering the company's profitability.
+    $$ 
+    Base\\ Bonus = \\text{Base Salary} \\times \\frac{\\text{Bonus Base Percentage}}{100}
+    $$
+
+    b. Then, calculate the **Excess Revenue**:
+
+    $$ 
+    Excess\\ Revenue = \\text{Actual Revenue} - \\text{Target Revenue}
+    $$
+
+    c. If Free Cash Flow (FCF) is positive, the **Excess Bonus** is calculated:
+
+    $$ 
+    Excess\\ Bonus = Excess\\ Revenue \\times \\frac{\\text{Excess Bonus Percentage}}{100}
+    $$
+
+    d. If Free Cash Flow (FCF) is negative, the excess bonus is zero.
+
+    ### Total Bonus:
+    Finally, the total bonus is the sum of the **Base Bonus** and **Excess Bonus**:
+
+    $$
+    Total\\ Bonus = Base\\ Bonus + Excess\\ Bonus
+    $$
+
+    This approach ensures that you are rewarded not only for meeting targets but also for exceeding them, as long as the company maintains profitability.
     """)
 
     st.subheader("Total Compensation")
     st.write("""
-    The total compensation for each year is calculated using both the **Proportional Bonus** and **Excess Revenue Bonus** methods:
+    Your total compensation for each year is the sum of your base salary and the bonuses calculated using the **Proportional Bonus** and **Excess Revenue Bonus** methods.
 
-    1. **Total Compensation (Proportional Bonus):**
-    
-    Total Compensation = Base Salary + Proportional Bonus
+    ### 1. Total Compensation (Proportional Bonus):
 
-    2. **Total Compensation (Excess Revenue Bonus):**
-    
-    Total Compensation = Base Salary + Total Bonus (Base Bonus + Excess Bonus)
+    $$
+    Total\\ Compensation = Base\\ Salary + Proportional\\ Bonus
+    $$
 
-    - For the first year, the joining bonus is included in the total compensation.
-    - The base salary increases each year by the specified annual increase rate.
+    ### 2. Total Compensation (Excess Revenue Bonus):
+
+    $$
+    Total\\ Compensation = Base\\ Salary + Total\\ Bonus\\ (Base\\ Bonus + Excess\\ Bonus)
+    $$
+
+    **Note**:
+    - For the first year, the joining bonus is factored into the total compensation.
+    - Your base salary increases each year according to the **Annual Salary Increase Rate** you input.
     """)
 
 if __name__ == "__main__":
