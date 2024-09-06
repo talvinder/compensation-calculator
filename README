@@ -1,0 +1,108 @@
+Here’s the updated `README.md` with the additional detail that the app is specifically designed for **B2B SaaS products** with **Indian employees** who sell to the **USA market**:
+
+```markdown
+# SaaS Compensation Calculator
+
+This project is a **SaaS Compensation Calculator** designed to calculate the compensation of employees (including equity, base salary, and bonuses) based on their performance relative to revenue benchmarks. The calculator is built using **Streamlit**, a Python-based web app framework that allows for easy interaction and visualization.
+
+### Designed for B2B SaaS Products
+
+This tool is specifically designed for **B2B SaaS products** where the employees are **based in India** but the product is sold in the **USA**. It handles the complexity of exchange rates (USD to INR), varying revenue targets, and compensation structures that reward performance.
+
+## Features
+
+- **Two Bonus Calculation Methods:**
+  - **Proportional Bonus:** Calculates a bonus proportional to the revenue achieved relative to the target.
+  - **Excess Revenue Bonus:** Rewards performance exceeding target revenue with an additional bonus based on the surplus revenue.
+  
+- **Equity Calculation:** Based on performance levels (Median, Top Quartile, Top Decile), employees can earn equity with growth rates determining the progression between these levels.
+
+- **Visualization:** Graphically compares actual revenue against performance benchmarks (Median, Top Quartile, and Top Decile).
+
+- **Interactive Inputs:** Allows for adjusting parameters like base salary, exchange rates, bonus percentages, and revenue targets directly through the sidebar.
+
+- **Download Results:** Generates a downloadable Excel report with compensation results, including a graph for performance comparison.
+
+## How It Works
+
+### Input Parameters
+
+1. **Base Salary and Bonus Parameters**:
+   - Set your base salary in lakhs INR.
+   - Adjust the **bonus base percentage** (e.g., 125%) and the **excess bonus percentage** (e.g., 10%) to reflect company bonus policies.
+
+2. **Revenue Targets**:
+   - Enter the actual revenue for each year.
+   - Set performance benchmarks (Median, Top Quartile, Top Decile) for each year based on your company's revenue projections. These benchmarks are based on the **ChartMogul SaaS Growth Report** [found here](https://chartmogul.com/reports/saas-growth-report/).
+
+3. **Equity Levels**:
+   - Equity is determined based on the company's performance relative to benchmarks and grows at user-defined growth rates.
+
+4. **Bonus Calculation Methods**:
+   - **Proportional Bonus:** A linear bonus based on performance relative to the target revenue.
+   - **Excess Revenue Bonus:** An additional bonus if actual revenue exceeds the target.
+
+### Outputs
+
+1. **Base Salary**: The base salary grows yearly by a fixed percentage.
+2. **Proportional Bonus**: A bonus based on a proportional increase in revenue relative to the target.
+3. **Excess Revenue Bonus**: An additional reward for performance exceeding target revenue, calculated using the exchange rate and the excess revenue.
+4. **Equity**: Based on performance levels (Median, Top Quartile, Top Decile), and user-defined growth rates.
+5. **Total Compensation**: The final compensation, including salary, bonus (both types), and equity.
+
+### Visualization
+The app generates a performance chart comparing actual revenue against benchmarks, allowing you to visualize how performance translates into bonuses and equity.
+
+### Example Calculation
+- **Base Salary:** ₹65 lakhs
+- **Target Revenue:** $1.875M (Top Quartile benchmark)
+- **Actual Revenue:** $2M
+- **Excess Bonus Percentage:** 10%
+
+In this case:
+- **Proportional Bonus**: ₹86.46 lakhs
+- **Excess Revenue Bonus**: ₹91.625 lakhs
+
+Both calculation methods can be compared to see which one provides the best reward for the employee based on actual performance.
+
+### How to Run the App
+
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/your-repo/saas-compensation-calculator.git
+   cd saas-compensation-calculator
+   ```
+
+2. **Install Required Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run the Streamlit App:**
+   ```bash
+   streamlit run main.py
+   ```
+
+4. **Adjust Parameters:** Open the app in your browser, and use the sidebar to adjust the input parameters (salary, bonus, revenue, etc.).
+
+### Future Enhancements
+
+- **Dynamic Data Integration:** Fetch revenue and financial data directly from business tools.
+- **Multi-Year Projections:** Generate compensation projections across multiple years with real-time adjustments.
+- **Team-Level Reports:** Calculate compensation for entire teams and departments.
+
+## Benchmarks Source
+
+The revenue benchmarks used in this app are based on the **ChartMogul SaaS Growth Report**, which can be accessed [here](https://chartmogul.com/reports/saas-growth-report/).
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contribution
+
+Feel free to open issues or submit pull requests if you'd like to contribute or suggest improvements.
+
+```
+
+This version now mentions that the tool is designed for **B2B SaaS products** that have **Indian employees** but sell to the **USA market**, giving context to the use of exchange rates and the specific structure of compensation.
