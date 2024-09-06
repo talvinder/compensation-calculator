@@ -144,9 +144,9 @@ def main():
         else:  # year == 4
             year_equity['Minimum'] = col1.number_input(f"Min Y{year}", key=f"min_eq_{year}", value=1.0, step=0.1, format="%.1f")
             year_equity['Median'] = col2.number_input(f"Med Y{year}", key=f"med_eq_{year}", value=2.0, step=0.1, format="%.1f")
-            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=3, step=0.1, format="%.1f")
-            year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=4, step=0.1, format="%.1f")
-            year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=5, step=0.1, format="%.1f")
+            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=3.0, step=0.1, format="%.1f")
+            year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=4.0, step=0.1, format="%.1f")
+            year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=5.0, step=0.1, format="%.1f")
         
         equity_levels.append(year_equity)
 
