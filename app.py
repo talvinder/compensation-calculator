@@ -107,8 +107,8 @@ def main():
     exchange_rate = st.sidebar.number_input("USD to INR Exchange Rate", min_value=1.0, value=83.0, step=0.1, format="%.1f")
     
     st.sidebar.subheader("Salary and Bonus Parameters")
-    initial_base_salary_lakhs = st.sidebar.number_input("Initial Base Salary (Lakhs INR)", min_value=0.0, value=65.0, step=1.0, format="%.1f")
-    joining_bonus_lakhs = st.sidebar.number_input("Joining Bonus (Lakhs INR)", min_value=0.0, value=30.0, step=1.0, format="%.1f")
+    initial_base_salary_lakhs = st.sidebar.number_input("Initial Base Salary (Lakhs INR)", min_value=0.0, value=25.0, step=1.0, format="%.1f")
+    joining_bonus_lakhs = st.sidebar.number_input("Joining Bonus (Lakhs INR)", min_value=0.0, value=10.0, step=1.0, format="%.1f")
     salary_increase_rate = st.sidebar.number_input("Annual Salary Increase Rate (%)", min_value=0.0, value=10.0, step=0.1, format="%.1f") / 100
     st.sidebar.subheader("Bonus Parameters")
     bonus_base_percentage = st.sidebar.number_input("Bonus Base (% of Base Salary)", min_value=0.0, value=125.0, step=1.0, format="%.1f")
@@ -138,15 +138,15 @@ def main():
         elif year == 3:
             year_equity['Minimum'] = col1.number_input(f"Min Y{year}", key=f"min_eq_{year}", value=1.0, step=0.1, format="%.1f")
             year_equity['Median'] = col2.number_input(f"Med Y{year}", key=f"med_eq_{year}", value=2.0, step=0.1, format="%.1f")
-            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=4.0, step=0.1, format="%.1f")
+            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=3.0, step=0.1, format="%.1f")
             year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=4.0, step=0.1, format="%.1f")
             year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=5.0, step=0.1, format="%.1f")
         else:  # year == 4
             year_equity['Minimum'] = col1.number_input(f"Min Y{year}", key=f"min_eq_{year}", value=1.0, step=0.1, format="%.1f")
             year_equity['Median'] = col2.number_input(f"Med Y{year}", key=f"med_eq_{year}", value=2.0, step=0.1, format="%.1f")
-            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=1.5, step=0.1, format="%.1f")
-            year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=1.5, step=0.1, format="%.1f")
-            year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=1.5, step=0.1, format="%.1f")
+            year_equity['Top Quartile'] = col3.number_input(f"TQ Y{year}", key=f"tq_eq_{year}", value=3, step=0.1, format="%.1f")
+            year_equity['Top Decile'] = col4.number_input(f"TD Y{year}", key=f"td_eq_{year}", value=4, step=0.1, format="%.1f")
+            year_equity['Maximum'] = col5.number_input(f"Max Y{year}", key=f"max_eq_{year}", value=5, step=0.1, format="%.1f")
         
         equity_levels.append(year_equity)
 
